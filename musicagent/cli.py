@@ -11,6 +11,7 @@ from rich.console import Console
 from musicagent.io.inputs import InputMaterialReader
 from musicagent.models import InputHandlingMode, ProjectRequest
 from musicagent.orchestration.crew import CrewProjectGenerator
+from musicagent.registries.agents import built_in_agents
 from musicagent.registries.crews import BuiltInCrewRegistry
 
 app = typer.Typer(help="Multi-agent music creation tool.")
@@ -25,6 +26,24 @@ def list_crews() -> None:
     for crew in registry.list():
         aliases = ", ".join(crew.style_aliases)
         console.print(f"{crew.id}: {crew.display_name} [{aliases}]")
+
+
+@app.command("crew-worker")
+def crew_worker(crew_id: Annotated[str, typer.Option("--crew-id")]) -> None:
+    """Start a lightweight placeholder worker for a configured crew."""
+
+    crew = BuiltInCrewRegistry.default().resolve(crew_id)
+    console.print(f"crew worker ready: {crew.id}")
+
+
+@app.command("agent-worker")
+def agent_worker(agent_id: Annotated[str, typer.Option("--agent-id")]) -> None:
+    """Start a lightweight placeholder worker for a configured agent."""
+
+    agent_ids = {agent.id for agent in built_in_agents()}
+    if agent_id not in agent_ids:
+        raise typer.BadParameter(f"Unknown agent: {agent_id}")
+    console.print(f"agent worker ready: {agent_id}")
 
 
 @app.command("create")

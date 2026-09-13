@@ -5,7 +5,7 @@ x-musicagent-base: &musicagent-base
   env_file:
     - path: .env
       required: false
-  environment:
+  environment: &musicagent-environment
     MUSICAGENT_OUTPUT_ROOT: /app/outputs
     MUSICAGENT_LLM_PROVIDER: ${MUSICAGENT_LLM_PROVIDER:-stub}
     MUSICAGENT_INPUT_MODE: ${MUSICAGENT_INPUT_MODE:-copy}
@@ -27,6 +27,8 @@ services:
     <<: *musicagent-base
     profiles:
       - app
+      - crews
+      - agents
     ports:
       - "8000:8000"
     command:
@@ -36,3 +38,115 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
+
+  electronic-alt-pop-crew:
+    <<: *musicagent-base
+    profiles:
+      - crews
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: crew
+      MUSICAGENT_CREW_ID: electronic_alt_pop
+    command:
+      - musicagent
+      - crew-worker
+      - --crew-id
+      - electronic_alt_pop
+
+  singer-songwriter-acoustic-crew:
+    <<: *musicagent-base
+    profiles:
+      - crews
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: crew
+      MUSICAGENT_CREW_ID: singer_songwriter_acoustic
+    command:
+      - musicagent
+      - crew-worker
+      - --crew-id
+      - singer_songwriter_acoustic
+
+  groove-architect-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: groove_architect
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - groove_architect
+
+  sound-designer-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: sound_designer
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - sound_designer
+
+  cyber-critic-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: cyber_critic
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - cyber_critic
+
+  lyricist-poet-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: lyricist_poet
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - lyricist_poet
+
+  topliner-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: topliner
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - topliner
+
+  harmonic-accompanist-agent:
+    <<: *musicagent-base
+    profiles:
+      - agents
+    environment:
+      <<: *musicagent-environment
+      MUSICAGENT_DEPLOYMENT_PROFILE: agent
+      MUSICAGENT_AGENT_ID: harmonic_accompanist
+    command:
+      - musicagent
+      - agent-worker
+      - --agent-id
+      - harmonic_accompanist
