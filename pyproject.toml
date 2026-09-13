@@ -1,5 +1,36 @@
 [project]
 name = "musicagent"
 version = "0.1.0"
-requires-python = ">=3.14"
-dependencies = []
+description = "Multi-agent music creation tooling for structured song and MIDI generation."
+requires-python = ">=3.12"
+dependencies = [
+    "mido",
+    "music21",
+    "pretty_midi",
+    "pydantic",
+    "python-dotenv",
+    "rich",
+    "typer",
+]
+
+[project.scripts]
+musicagent = "musicagent.cli:main"
+
+[dependency-groups]
+dev = [
+    "mypy",
+    "pytest",
+    "pytest-cov",
+    "pytest-mock",
+    "ruff",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["musicagent", "tests"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+packages = ["musicagent"]
+mypy_path = "typings"

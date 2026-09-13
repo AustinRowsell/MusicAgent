@@ -1,0 +1,19 @@
+from pathlib import Path
+from typing import Any
+
+class Message:
+    type: str
+    def __init__(self, type: str, **kwargs: Any) -> None: ...
+
+class MetaMessage:
+    type: str
+    def __init__(self, type: str, **kwargs: Any) -> None: ...
+
+class MidiTrack(list[Message | MetaMessage]): ...
+
+class MidiFile:
+    tracks: list[MidiTrack]
+    def __init__(self, filename: str | Path | None = None, ticks_per_beat: int = 480) -> None: ...
+    def save(self, filename: str | Path) -> None: ...
+
+def bpm2tempo(bpm: float) -> int: ...

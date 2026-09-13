@@ -1,0 +1,3 @@
+class Pitch:
+    name: str
+    def __init__(self, name: str | None = None, *, midi: int | None = None) -> None: ...
