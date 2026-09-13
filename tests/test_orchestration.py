@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 
 from musicagent.models import ProjectRequest
 from musicagent.orchestration.crew import CrewProjectGenerator, LLMAgentRunner, StubAgentRunner
@@ -134,30 +135,34 @@ def test_crew_generator_default_runner_uses_configured_local_llm_models(tmp_path
     monkeypatch.setenv("MUSICAGENT_MODEL", "llama3.1:8b")
     monkeypatch.setenv("MUSICAGENT_OPENAI_BASE_URL", "http://ollama:11434/v1")
     monkeypatch.setenv("OPENAI_API_KEY", "ollama-local-placeholder")
+    monkeypatch.setenv("MUSICAGENT_USE_LOW_RESOURCE_MODEL", "false")
     monkeypatch.setenv("MUSICAGENT_AGENT_MODEL_LYRICIST_POET", "mistral-nemo:12b")
     monkeypatch.setenv("MUSICAGENT_AGENT_MODEL_TOPLINER", "mistral-nemo:12b")
 
     calls: list[tuple[str, str | None, str | None]] = []
 
-    class FakeChatOpenAI:
-        def __init__(self, model: str, base_url: str | None = None) -> None:
-            calls.append(("init", model, base_url))
-            self.model = model
+    class FakeOpenAI:
+        def __init__(self, base_url: str | None = None) -> None:
+            self.base_url = base_url
+            self.chat = self
+            self.completions = self
 
-        def invoke(self, prompt: str) -> object:
-            calls.append(("invoke", self.model, prompt.splitlines()[0]))
+        def create(self, model: str, messages: list[dict[str, str]]) -> object:
+            prompt = messages[0]["content"]
+            calls.append(("init", model, self.base_url))
+            calls.append(("invoke", model, prompt.splitlines()[0]))
 
-            class Response:
-                content = (
-                    '{"agent_id":"'
-                    + prompt.splitlines()[0].removeprefix("Agent: ")
-                    + '","summary":"fake local llm response",'
-                    + '"sections":["verse"],"actions":["revise hook"],"confidence":0.7}'
-                )
+            content = (
+                '{"agent_id":"'
+                + prompt.splitlines()[0].removeprefix("Agent: ")
+                + '","summary":"fake local llm response",'
+                + '"sections":["verse"],"actions":["revise hook"],"confidence":0.7}'
+            )
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+            )
 
-            return Response()
-
-    monkeypatch.setattr("langchain_openai.ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
     request = ProjectRequest(
         name="Model Routing",
         prompt="write an intimate chorus",
@@ -188,22 +193,26 @@ def test_crew_generator_low_resource_mode_overrides_agent_models(tmp_path, monke
 
     models: list[str] = []
 
-    class FakeChatOpenAI:
-        def __init__(self, model: str, base_url: str | None = None) -> None:
+    class FakeOpenAI:
+        def __init__(self, base_url: str | None = None) -> None:
+            self.chat = self
+            self.completions = self
+
+        def create(self, model: str, messages: list[dict[str, str]]) -> object:
+            prompt = messages[0]["content"]
             models.append(model)
 
-        def invoke(self, prompt: str) -> object:
-            class Response:
-                content = (
-                    '{"agent_id":"'
-                    + prompt.splitlines()[0].removeprefix("Agent: ")
-                    + '","summary":"fake low-resource response",'
-                    + '"sections":[],"actions":[],"confidence":0.6}'
-                )
+            content = (
+                '{"agent_id":"'
+                + prompt.splitlines()[0].removeprefix("Agent: ")
+                + '","summary":"fake low-resource response",'
+                + '"sections":[],"actions":[],"confidence":0.6}'
+            )
+            return SimpleNamespace(
+                choices=[SimpleNamespace(message=SimpleNamespace(content=content))]
+            )
 
-            return Response()
-
-    monkeypatch.setattr("langchain_openai.ChatOpenAI", FakeChatOpenAI)
+    monkeypatch.setattr("openai.OpenAI", FakeOpenAI)
     request = ProjectRequest(
         name="Low Resource Routing",
         prompt="write a tiny acoustic sketch",

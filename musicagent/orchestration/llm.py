@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Any, Protocol
 
 from musicagent.config import MusicAgentSettings
 
@@ -63,13 +63,15 @@ class LangChainOpenAICompatibleLLMClient:
         return ("OPENAI_API_KEY", "MUSICAGENT_MODEL")
 
     def complete(self, agent_id: str, prompt: str, model: str | None = None) -> str:
-        from langchain_openai import ChatOpenAI
+        from openai import OpenAI
 
         selected_model = model or self.model
-        llm = ChatOpenAI(model=selected_model, base_url=self.base_url)
-        prompt_text = chr(10).join([f"Agent: {agent_id}", "", prompt])
-        response = llm.invoke(prompt_text)
-        return str(response.content)
+        client = OpenAI(base_url=self.base_url) if self.base_url else OpenAI()
+        response = client.chat.completions.create(
+            model=selected_model,
+            messages=[{"role": "user", "content": format_agent_prompt(agent_id, prompt)}],
+        )
+        return extract_chat_completion_content(response)
 
 
 @dataclass(frozen=True)
@@ -95,16 +97,36 @@ class AzureOpenAILLMClient:
         )
 
     def complete(self, agent_id: str, prompt: str, model: str | None = None) -> str:
-        from langchain_openai import AzureChatOpenAI
+        from openai import AzureOpenAI
 
-        llm = AzureChatOpenAI(
+        client = AzureOpenAI(
             azure_endpoint=self.endpoint,
-            azure_deployment=model or self.deployment,
             api_version=self.api_version,
         )
-        prompt_text = chr(10).join([f"Agent: {agent_id}", "", prompt])
-        response = llm.invoke(prompt_text)
-        return str(response.content)
+        response = client.chat.completions.create(
+            model=model or self.deployment,
+            messages=[{"role": "user", "content": format_agent_prompt(agent_id, prompt)}],
+        )
+        return extract_chat_completion_content(response)
+
+
+def format_agent_prompt(agent_id: str, prompt: str) -> str:
+    """Return the common text prompt sent to chat-completion providers."""
+
+    return chr(10).join([f"Agent: {agent_id}", "", prompt])
+
+
+def extract_chat_completion_content(response: Any) -> str:
+    """Extract text content from an OpenAI chat completion response."""
+
+    choices = getattr(response, "choices", None)
+    if not choices:
+        return ""
+    message = choices[0].message
+    content = getattr(message, "content", "")
+    if content is None:
+        return ""
+    return str(content)
 
 
 def create_agent_model_router(settings: MusicAgentSettings) -> AgentModelRouter:
