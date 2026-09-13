@@ -22,12 +22,16 @@ class InputMaterialReader:
     def from_path(self, path: Path) -> InputMaterial:
         resolved_path = path.expanduser()
         material_type = self._detect_type(resolved_path)
-        content = None if material_type is InputMaterialType.MIDI else resolved_path.read_text()
+        binary_or_metadata_only = material_type in {InputMaterialType.MIDI, InputMaterialType.AUDIO}
+        content = None if binary_or_metadata_only else resolved_path.read_text()
+        constraints = ("metadata_only",) if material_type is InputMaterialType.AUDIO else ()
         return InputMaterial(
             id=resolved_path.stem,
             type=material_type,
             path=resolved_path,
             content=content,
+            constraints=constraints,
+            metadata={"extension": resolved_path.suffix.lower()},
         )
 
     @staticmethod
@@ -37,6 +41,8 @@ class InputMaterialReader:
             return InputMaterialType.MARKDOWN
         if suffix in {".mid", ".midi"}:
             return InputMaterialType.MIDI
+        if suffix in {".wav", ".mp3", ".aiff", ".aif", ".flac", ".ogg"}:
+            return InputMaterialType.AUDIO
         if suffix == ".json":
             return InputMaterialType.JSON
         return InputMaterialType.TEXT

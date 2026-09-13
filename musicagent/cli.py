@@ -9,7 +9,7 @@ import typer
 from rich.console import Console
 
 from musicagent.io.inputs import InputMaterialReader
-from musicagent.models import ProjectRequest
+from musicagent.models import InputHandlingMode, ProjectRequest
 from musicagent.orchestration.crew import CrewProjectGenerator
 from musicagent.registries.crews import BuiltInCrewRegistry
 
@@ -34,6 +34,7 @@ def create_project(
     output: Annotated[Path, typer.Option("--output")],
     crew: Annotated[str, typer.Option("--crew")] = "electronic_alt_pop",
     input_paths: Annotated[list[Path] | None, typer.Option("--input")] = None,
+    input_mode: Annotated[InputHandlingMode, typer.Option("--input-mode")] = InputHandlingMode.COPY,
     tempo: Annotated[int, typer.Option("--tempo")] = 120,
     key: Annotated[str, typer.Option("--key")] = "C major",
     dry_run: Annotated[bool, typer.Option("--dry-run")] = False,
@@ -51,6 +52,7 @@ def create_project(
         tempo_bpm=tempo,
         key=key,
         inputs=materials,
+        input_mode=input_mode,
         dry_run=dry_run,
         overwrite=overwrite,
     )

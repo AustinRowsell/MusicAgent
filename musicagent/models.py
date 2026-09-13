@@ -17,6 +17,14 @@ class InputMaterialType(str, Enum):
     MARKDOWN = "markdown"
     MIDI = "midi"
     JSON = "json"
+    AUDIO = "audio"
+
+
+class InputHandlingMode(str, Enum):
+    """Supported project input handling modes."""
+
+    COPY = "copy"
+    REFERENCE = "reference"
 
 
 class InputMaterial(BaseModel):
@@ -32,6 +40,7 @@ class InputMaterial(BaseModel):
     assigned_agents: tuple[str, ...] = ()
     priority: str = "medium"
     constraints: tuple[str, ...] = ()
+    metadata: dict[str, str] = Field(default_factory=dict)
 
 
 class ProjectRequest(BaseModel):
@@ -47,6 +56,7 @@ class ProjectRequest(BaseModel):
     key: str = "C major"
     time_signature: str = "4/4"
     inputs: tuple[InputMaterial, ...] = ()
+    input_mode: InputHandlingMode = InputHandlingMode.COPY
     overwrite: bool = False
     dry_run: bool = False
     review_pass: bool = False
@@ -78,9 +88,13 @@ class GeneratedAsset(BaseModel):
     description: str = ""
 
     def relative_to(self, root: Path) -> dict[str, Any]:
+        try:
+            path = str(self.path.relative_to(root))
+        except ValueError:
+            path = str(self.path)
         return {
             "kind": self.kind,
-            "path": str(self.path.relative_to(root)),
+            "path": path,
             "description": self.description,
         }
 
@@ -124,6 +138,9 @@ class StylePack(BaseModel):
     common_keys: tuple[str, ...]
     instrumentation: tuple[str, ...]
     recommended_agents: tuple[str, ...]
+    structure_profile: str = "default"
+    structure: tuple[str, ...] = ()
+    accompaniment_default: str | None = None
 
 
 class MidiAnalysisSummary(BaseModel):

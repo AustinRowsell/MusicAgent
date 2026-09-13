@@ -7,7 +7,13 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
-from musicagent.models import GeneratedAsset, ProjectPaths, ProjectRequest
+from musicagent.models import (
+    GeneratedAsset,
+    InputHandlingMode,
+    InputMaterial,
+    ProjectPaths,
+    ProjectRequest,
+)
 
 
 class LocalOutputStore:
@@ -53,10 +59,35 @@ class LocalOutputStore:
             "tempo_bpm": request.tempo_bpm,
             "key": request.key,
             "time_signature": request.time_signature,
+            "resolved_output_root": str(project.root.resolve()),
+            "input_mode": request.input_mode.value,
+            "inputs": [
+                input_manifest_entry(material, project, request.input_mode)
+                for material in request.inputs
+            ],
             "created_at": datetime.now(UTC).isoformat(),
             "assets": [asset.relative_to(project.root) for asset in assets],
         }
         return self.write_json(project, "session_manifest.json", manifest)
+
+
+def input_manifest_entry(
+    material: InputMaterial, project: ProjectPaths, mode: InputHandlingMode
+) -> dict[str, object]:
+    entry: dict[str, object] = {
+        "id": material.id,
+        "type": material.type.value,
+        "mode": mode.value,
+        "constraints": list(material.constraints),
+        "metadata": material.metadata,
+    }
+    if material.path is not None:
+        entry["original_path"] = str(material.path)
+        if mode is InputHandlingMode.COPY:
+            entry["project_path"] = str(
+                (project.inputs_dir / material.path.name).relative_to(project.root)
+            )
+    return entry
 
 
 def slugify(value: str) -> str:

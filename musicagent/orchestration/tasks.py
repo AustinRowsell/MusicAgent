@@ -60,6 +60,7 @@ def tracks_for_crew(crew_id: str) -> list[MidiTrack]:
                     MidiNote(pitch=64, start_beats=0, duration_beats=1, velocity=86),
                     MidiNote(pitch=67, start_beats=1, duration_beats=1, velocity=88),
                 ),
+                program=53,
             ),
             MidiTrack(
                 name="accompaniment",
@@ -68,6 +69,7 @@ def tracks_for_crew(crew_id: str) -> list[MidiTrack]:
                     MidiNote(pitch=55, start_beats=0, duration_beats=2, velocity=68),
                     MidiNote(pitch=60, start_beats=0, duration_beats=2, velocity=66),
                 ),
+                program=25,
             ),
         ]
     return [
@@ -80,7 +82,9 @@ def tracks_for_crew(crew_id: str) -> list[MidiTrack]:
             ),
         ),
         MidiTrack(
-            name="bass", notes=(MidiNote(pitch=45, start_beats=0, duration_beats=1, velocity=92),)
+            name="bass",
+            notes=(MidiNote(pitch=45, start_beats=0, duration_beats=1, velocity=92),),
+            program=38,
         ),
         MidiTrack(
             name="chords",
@@ -89,10 +93,12 @@ def tracks_for_crew(crew_id: str) -> list[MidiTrack]:
                 MidiNote(pitch=60, start_beats=0, duration_beats=2, velocity=72),
                 MidiNote(pitch=64, start_beats=0, duration_beats=2, velocity=70),
             ),
+            program=89,
         ),
         MidiTrack(
             name="hooks",
             notes=(MidiNote(pitch=72, start_beats=1, duration_beats=0.5, velocity=86),),
+            program=81,
         ),
     ]
 

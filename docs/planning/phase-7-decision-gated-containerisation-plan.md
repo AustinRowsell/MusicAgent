@@ -188,36 +188,278 @@ services:
 
 This example should be expanded during implementation to include the selected `app`, `crews`, and `agents` profiles.
 
-## 7. Phase 7 Implementation Scope
+## 7. Multi-Phase Implementation Roadmap
 
-The decision log is now answered. The next implementation should add:
+The decision log is now answered, but implementation should not be treated as a single Docker task. The work should be delivered through the following quality-gated phases so the captured product and runtime decisions are not lost.
 
-1. `.dockerignore` excluding `.env`, `.git`, `.venv`, `.idea`, caches, generated outputs, and local artifacts.
-2. `Dockerfile` using Python 3.13 or 3.12 and the project dependency lock.
-3. `compose.yaml` with profiles for:
-   - `app`: `musicagent-cli` and `musicagent-web`.
-   - `crews`: `electronic-alt-pop-crew` and `singer-songwriter-acoustic-crew`.
-   - `agents`: one service per initial built-in agent.
-4. `.env.example` with non-secret configuration names only.
-5. Documentation for local container usage.
-6. Tests or smoke checks that verify:
-   - container builds;
-   - CLI command runs in container;
-   - web service starts in container;
-   - output bind mount receives generated files under `./outputs`;
-   - no `.env`, `.git`, `.venv`, `.idea`, or generated outputs are copied into the image.
+### Phase 7.1: Decision Codification and Configuration Contracts
 
-The Compose implementation should support all selected runtime modes from the start, even if the per-crew and per-agent services initially share the same image and run lightweight worker-style commands.
+Goal: turn the answered decisions into explicit code/configuration contracts before adding Docker runtime files.
 
-## 8. Additional Product Decisions Captured
+Deliverables:
 
-### 8.1 CLI vs Web Ownership
+- Add a typed configuration model for runtime decisions:
+  - interface mode: CLI and web are both first-class;
+  - MIDI metadata mode: descriptive names plus General MIDI hints;
+  - input handling mode: copy or reference;
+  - audio handling mode: metadata-only, no transcription;
+  - model provider mode: fully pluggable, no hard default;
+  - output path mode: relative and absolute paths supported;
+  - electronic structure mode: style-pack selected, with radio-pop and club variants;
+  - acoustic accompaniment default: guitar-first;
+  - deployment profile: app, crew, or agent.
+- Add `.env.example` with non-secret configuration names only.
+- Add config documentation for local CLI, web, and container runs.
+- Add tests proving config defaults and overrides are loaded without secrets.
 
-If CLI remains canonical, all web actions should call the same application services used by CLI. This is the recommended approach because it keeps automation and tests straightforward.
+Quality gate:
 
-If web becomes primary, the CLI should become a thin wrapper around the same service layer.
+- Tests must prove `.env` is not required for offline/stub operation.
+- Tests must prove real secret values are never written into generated manifests or logs.
+- `ruff`, `mypy`, and full `pytest` must pass.
 
-### 8.2 MIDI Naming and General MIDI
+### Phase 7.2: Output Path, Input Mode, and Audio Metadata Support
+
+Goal: implement the decisions around input handling, output path policy, and metadata-only audio handling.
+
+Deliverables:
+
+- Support both relative and absolute output roots consistently across CLI and web API.
+- Record resolved output root and relative generated asset paths in manifests.
+- Add explicit input handling mode:
+  - copy input files into project folders;
+  - reference input files without copying;
+  - configurable default, with copy as the safe default.
+- Add metadata-only audio input support for common audio file extensions such as `.wav`, `.mp3`, `.aiff`, `.aif`, `.flac`, and `.ogg`.
+- Do not add audio-to-MIDI transcription or heavy ML/audio dependencies in this phase.
+- Add manifest metadata for referenced/copied inputs, including type, original path when safe, project-local path when copied, and detected extension.
+
+Quality gate:
+
+- Tests must cover copy mode and reference mode.
+- Tests must cover relative output paths and absolute output paths.
+- Tests must cover audio metadata-only ingestion without transcription.
+- Tests must verify generated outputs still use per-track/per-instrument MIDI files.
+
+### Phase 7.3: MIDI Metadata and Style-Pack Defaults
+
+Goal: implement General MIDI hints and the selected style/accompaniment defaults without weakening the per-track MIDI rule.
+
+Deliverables:
+
+- Add General MIDI program hints to MIDI tracks where applicable.
+- Keep descriptive filenames and track names as the primary human-facing organisation method.
+- Keep drums on zero-based channel 9 / General MIDI channel 10.
+- Add or extend style packs for:
+  - electronic radio-pop structure;
+  - electronic club/extended structure;
+  - acoustic guitar-first structure.
+- Ensure electronic structure is selected through style packs rather than hard-coded crew branching.
+- Ensure acoustic defaults are guitar-first while still allowing piano or alternate templates later.
+
+Quality gate:
+
+- Tests must verify MIDI files contain expected program changes for non-drum tracks where applicable.
+- Tests must verify drums use channel 9.
+- Tests must verify radio-pop and club electronic styles produce different section/structure metadata.
+- Tests must verify acoustic default metadata is guitar-first.
+- Tests must verify no single `full_sketch.mid` is required or generated as the primary output.
+
+### Phase 7.4: Pluggable Model Provider Architecture
+
+Goal: make model/provider selection fully pluggable before enabling real non-stub execution paths.
+
+Deliverables:
+
+- Add an explicit provider registry or factory for LLM clients.
+- Keep `StubLLMClient` as the default for tests and offline execution.
+- Keep `LangChainOpenAILLMClient` as one provider implementation, not the hard-coded default.
+- Allow provider selection by config/environment, for example:
+  - `MUSICAGENT_LLM_PROVIDER=stub`
+  - `MUSICAGENT_LLM_PROVIDER=openai-compatible`
+  - `MUSICAGENT_LLM_PROVIDER=azure-openai`
+- Add validation for required environment variables by selected provider.
+- Ensure missing credentials fail clearly without printing secret values.
+
+Quality gate:
+
+- Tests must prove stub mode requires no credentials.
+- Tests must prove provider-specific missing config is reported without leaking secrets.
+- Tests must prove CLI and web use the same provider selection path.
+- Tests must not make live network/model calls.
+
+### Phase 7.5: Container Build Foundation
+
+Goal: add a secure, reproducible container image before adding multi-profile Compose complexity.
+
+Deliverables:
+
+- Add `.dockerignore` excluding:
+  - `.env`
+  - `.git`
+  - `.venv`
+  - `.idea`
+  - `outputs`
+  - Python caches
+  - test caches
+  - local editor/system files.
+- Add `Dockerfile` using Python 3.13 or 3.12, consistent with `requires-python = ">=3.12,<3.14"`.
+- Install dependencies from the project lock/config.
+- Support both CLI and web commands from the same image.
+- Avoid copying generated outputs or local secrets into the image.
+- Prefer a non-root runtime user where practical.
+
+Quality gate:
+
+- Docker build must pass.
+- Container CLI smoke test must list crews.
+- Container CLI smoke test must create per-track MIDI outputs under mounted `./outputs`.
+- Image context must exclude `.env`, `.git`, `.venv`, `.idea`, and generated outputs.
+
+### Phase 7.6: Compose App Profile
+
+Goal: support the simplest local container runtime first.
+
+Deliverables:
+
+- Add `compose.yaml` with an `app` profile containing:
+  - `musicagent-cli` for one-off commands;
+  - `musicagent-web` for FastAPI local dashboard/API.
+- Bind mount:
+  - `./outputs:/app/outputs`;
+  - `./inputs:/app/inputs:ro` when present.
+- Use `.env.example` for documented local configuration names.
+- Use real `.env` only locally and keep it ignored.
+- Expose web API on `localhost:8000` by default.
+
+Quality gate:
+
+- `docker compose --profile app run --rm musicagent-cli crews` must work.
+- `docker compose --profile app run --rm musicagent-cli create ... --dry-run` must write to host `./outputs`.
+- `docker compose --profile app up musicagent-web` must start the API.
+- Web API `/api/crews` must respond from the container.
+
+### Phase 7.7: Compose Crew Profile
+
+Goal: support deployment where each crew can run separately.
+
+Deliverables:
+
+- Extend `compose.yaml` with a `crews` profile containing:
+  - `electronic-alt-pop-crew`;
+  - `singer-songwriter-acoustic-crew`.
+- Each service should use the same image initially but set explicit environment/config for its crew id.
+- Each service should run a lightweight worker or command loop placeholder that can later be attached to a queue.
+- Do not duplicate business logic per container.
+
+Quality gate:
+
+- Both crew services must start successfully.
+- Each crew service must expose or log its configured crew id without secrets.
+- A smoke command for each crew must generate expected crew-specific outputs.
+
+### Phase 7.8: Compose Agent Profile
+
+Goal: support deployment where individual agents can run separately.
+
+Deliverables:
+
+- Extend `compose.yaml` with an `agents` profile containing one service for each initial agent:
+  - `groove-architect-agent`;
+  - `sound-designer-agent`;
+  - `cyber-critic-agent`;
+  - `lyricist-poet-agent`;
+  - `topliner-agent`;
+  - `harmonic-accompanist-agent`.
+- Each service should use the same image initially but set explicit environment/config for its agent id.
+- Agent services should be lightweight placeholders until queue-based distributed orchestration is introduced.
+- Preserve the same `AgentRunner` and task output contracts used by app and crew profiles.
+
+Quality gate:
+
+- All agent services must start successfully.
+- Each agent service must expose or log its configured agent id without secrets.
+- Tests or smoke checks must prove the service list covers all six initial built-in agents.
+
+### Phase 7.9: Documentation and Operator Workflows
+
+Goal: make the containerised system usable without reading the source code.
+
+Deliverables:
+
+- Add container usage documentation covering:
+  - CLI local run;
+  - web local run;
+  - app profile;
+  - crew profile;
+  - agent profile;
+  - output mount behaviour;
+  - `.env.example` usage;
+  - no-secret policy;
+  - troubleshooting common Docker/Compose issues.
+- Add examples for:
+  - creating an electronic project;
+  - creating an acoustic project;
+  - running a batch manifest;
+  - opening the web dashboard;
+  - downloading MIDI assets.
+
+Quality gate:
+
+- Documentation commands must be copy-paste runnable or clearly marked as examples.
+- Documentation must not include real secrets.
+- Documentation must explicitly state that per-agent containers are deployment profiles, not separate code forks.
+
+### Phase 7.10: Final End-to-End Verification
+
+Goal: prove the completed delivery is safe, reproducible, and aligned with all decisions.
+
+Required checks:
+
+- `uv run python -m pytest -q`
+- `uv run ruff format --check .`
+- `uv run ruff check .`
+- `uv run mypy musicagent`
+- Docker build smoke test.
+- Compose app profile CLI smoke test.
+- Compose app profile web smoke test.
+- Compose crew profile smoke test.
+- Compose agent profile smoke test.
+- Host `./outputs` bind mount verification.
+- `.dockerignore` verification that secrets and generated outputs are excluded.
+
+Completion criteria:
+
+- All checks pass.
+- All decisions D1-D12 are represented in code, config, docs, or tests.
+- No real credentials are printed, stored, or committed.
+- No single combined MIDI file is required as the main deliverable.
+- CLI and web remain equally supported through shared service code.
+
+## 8. Decision Traceability Matrix
+
+| Decision | Implementation Phase(s) | Required Evidence |
+| --- | --- | --- |
+| D1: CLI and web both first-class | 7.6, 7.9, 7.10 | CLI and web smoke tests pass using shared services |
+| D2: General MIDI plus names | 7.3, 7.10 | MIDI tests inspect program/channel metadata and filenames |
+| D3: Copy and reference input modes | 7.2, 7.10 | Tests cover copied and reference-only inputs |
+| D4: Metadata-only audio, no transcription | 7.2, 7.10 | Tests cover audio metadata extraction without transcription dependencies |
+| D5: Fully pluggable model provider | 7.4, 7.10 | Provider factory tests and no required hard default |
+| D6: Relative and absolute output paths | 7.2, 7.10 | Tests cover both path forms and manifest paths |
+| D7: Electronic style-pack structure variants | 7.3, 7.10 | Radio-pop and club style tests |
+| D8: Guitar-first acoustic default | 7.3, 7.10 | Acoustic default metadata test |
+| D9: App, crew, and agent runtime profiles | 7.6, 7.7, 7.8, 7.10 | Compose services and profile smoke tests |
+| D10: Docker/Compose next | 7.5, 7.6, 7.7, 7.8 | Dockerfile and compose.yaml exist and build/run |
+| D11: `.env.example`, ignored `.env` | 7.1, 7.5, 7.6, 7.9 | `.env.example`, `.gitignore`, `.dockerignore`, no secrets |
+| D12: `./outputs` bind mount | 7.6, 7.10 | Compose smoke test writes host outputs |
+
+## 9. Additional Product Decisions Captured
+
+### 9.1 CLI vs Web Ownership
+
+CLI and web are both first-class. Both interfaces should call the same application services so they remain feature-equivalent and avoid divergent business logic.
+
+### 9.2 MIDI Naming and General MIDI
 
 The per-track MIDI rule is settled. The remaining decision is whether each file should include General MIDI program changes.
 
@@ -227,33 +469,35 @@ Recommended:
 - MIDI files include sensible General MIDI program hints where applicable.
 - Drums use channel 10 / zero-based channel 9.
 
-### 8.3 Input Copying
+### 9.3 Input Copying
 
-Recommended:
+Decision:
 
+- Support both copy and reference modes.
 - Copy input files into the project folder by default for reproducibility.
 - Record original source paths in manifest metadata when safe.
-- Add a future `--reference-inputs` mode if desired.
+- Add `--reference-inputs` or equivalent config support.
 
-### 8.4 Audio Inputs
+### 9.4 Audio Inputs
 
-Recommended:
+Decision:
 
+- Support metadata-only audio handling.
 - Keep audio-to-MIDI transcription out of scope for now.
-- Add metadata-only audio support later if needed.
 - Do not add heavy audio/ML dependencies until a concrete testable requirement exists.
 
-### 8.5 Model Provider
+### 9.5 Model Provider
 
-Recommended:
+Decision:
 
-- Keep `LangChainOpenAILLMClient` as one implementation.
+- Model providers are fully pluggable with no hard default for real non-stub runs.
+- Keep `LangChainOpenAILLMClient` as one provider implementation.
 - Keep `StubLLMClient` as the default in tests and offline mode.
-- Add model/provider selection through configuration only after deciding the default provider.
+- Add model/provider selection through configuration.
 
-## 9. Questions For User
+## 10. Answered Questions Record
 
-Please answer these before the next implementation step:
+These questions have already been answered and are retained for traceability:
 
 1. Should the next milestone keep the CLI as the canonical interface, with the web UI as a wrapper, or should the web UI become the primary interface?
 2. Should generated MIDI files include General MIDI program changes, or should they only use descriptive filenames/track names?
@@ -269,20 +513,18 @@ Please answer these before the next implementation step:
 12. Should generated outputs be bind-mounted to `./outputs` on the host by default?
 13. Should `.env` be the local container config mechanism, with `.env.example` committed and real `.env` ignored?
 
-## 10. Recommended Answers
+## 11. Actual Answers To Implement
 
-If you want the fastest reliable path, choose:
-
-1. CLI canonical; web wraps the same service layer.
-2. General MIDI hints plus descriptive filenames.
-3. Copy inputs by default.
-4. Defer audio input beyond metadata-only.
-5. OpenAI-compatible via LangChain; stub default for tests.
-6. Support both, resolving roots internally.
-7. Style-pack selected; default `electro_pop` for short songs.
-8. Template/style-pack selected; default guitar-first.
-9. Logical agents in one app container for now.
-10. Yes, add Docker/Compose next.
-11. Yes, include CLI and web services.
-12. Yes, bind mount `./outputs:/app/outputs`.
-13. Yes, use `.env.example` and keep `.env` ignored.
+1. CLI and web UI are both first-class.
+2. MIDI should use both descriptive filenames/track names and General MIDI hints.
+3. Input handling should support both copied inputs and reference-only inputs.
+4. Audio support should include metadata-only handling while deferring audio-to-MIDI transcription.
+5. Model/provider selection should be fully pluggable with no hard real-provider default.
+6. Output roots should support both relative and absolute paths.
+7. Electronic structure should be selected through style packs, with radio-pop and club/extended variants supported.
+8. Acoustic accompaniment should default to guitar-first.
+9. Runtime should support app, per-crew, and per-agent deployment profiles.
+10. Docker/Compose should be added next.
+11. Compose should include CLI and web services and expand to crew/agent profiles.
+12. Generated outputs should bind mount to `./outputs` on the host by default.
+13. Local container config should use committed `.env.example`; real `.env` remains ignored and must never be committed.

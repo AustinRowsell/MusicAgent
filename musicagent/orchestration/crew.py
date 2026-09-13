@@ -10,7 +10,13 @@ from typing import Protocol
 from musicagent.io.inputs import InputMaterialReader
 from musicagent.io.outputs import LocalOutputStore
 from musicagent.midi.writer import MidoMidiWriter
-from musicagent.models import CrewDefinition, GeneratedAsset, ProjectPaths, ProjectRequest
+from musicagent.models import (
+    CrewDefinition,
+    GeneratedAsset,
+    InputHandlingMode,
+    ProjectPaths,
+    ProjectRequest,
+)
 from musicagent.orchestration.llm import StubLLMClient
 from musicagent.orchestration.tasks import build_stub_task_result, tasks_for_crew, tracks_for_crew
 from musicagent.registries.crews import BuiltInCrewRegistry
@@ -123,6 +129,13 @@ class CrewProjectGenerator:
         assets: list[GeneratedAsset] = []
         for material in request.inputs:
             if material.path is None:
+                continue
+            if request.input_mode is InputHandlingMode.REFERENCE:
+                assets.append(
+                    GeneratedAsset(
+                        kind="input_reference", path=material.path, description=material.id
+                    )
+                )
                 continue
             target = project.inputs_dir / material.path.name
             shutil.copyfile(material.path, target)
