@@ -1,0 +1,38 @@
+name: musicagent
+
+x-musicagent-base: &musicagent-base
+  build: .
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    MUSICAGENT_OUTPUT_ROOT: /app/outputs
+    MUSICAGENT_LLM_PROVIDER: ${MUSICAGENT_LLM_PROVIDER:-stub}
+    MUSICAGENT_INPUT_MODE: ${MUSICAGENT_INPUT_MODE:-copy}
+    MUSICAGENT_DEPLOYMENT_PROFILE: ${MUSICAGENT_DEPLOYMENT_PROFILE:-app}
+  volumes:
+    - ./outputs:/app/outputs
+    - ./inputs:/app/inputs:ro
+
+services:
+  musicagent-cli:
+    <<: *musicagent-base
+    profiles:
+      - app
+    command:
+      - musicagent
+      - crews
+
+  musicagent-web:
+    <<: *musicagent-base
+    profiles:
+      - app
+    ports:
+      - "8000:8000"
+    command:
+      - uvicorn
+      - musicagent.web.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"

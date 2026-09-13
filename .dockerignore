@@ -1,0 +1,32 @@
+# Version control and local environment
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.venv
+venv
+ENV
+.idea
+
+# Generated outputs and local inputs
+outputs/
+inputs/
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS/editor files
+.DS_Store
+*.swp
