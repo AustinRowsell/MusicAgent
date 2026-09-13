@@ -3,4 +3,6 @@ set -euo pipefail
 
 SCRIPT_DIR="${BASH_SOURCE[0]%/*}"
 cd "${SCRIPT_DIR}/.."
-exec docker compose --profile local-llm run --rm musicagent-local-llm-cli create --output /app/outputs "$@"
+source "${SCRIPT_DIR}/docker-common.sh"
+use_optional_local_ca_compose_override
+exec docker compose --profile local-llm run --rm musicagent-local-llm-cli musicagent create --output /app/outputs "$@"

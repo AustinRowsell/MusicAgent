@@ -178,6 +178,8 @@ Inspect non-secret local LLM configuration and runtime status:
 
 `llm-check` reports provider, configured models, model availability, and reachability without printing API key values. If a configured model is missing from the Dockerised runtime, it suggests the exact `./scripts/docker-local-llm-pull.sh <model>` command to run.
 
+If your network requires a local certificate authority for Ollama model pulls, place `.crt` or `.pem` CA files in `./certs`. The local-LLM helper scripts automatically enable `compose.local-certs.yaml` only when such files exist; systems that do not need local certificates use the default Compose file with no certificate mount. The `certs/` directory is ignored by Git and Docker build contexts.
+
 For ready-made workstation profiles from minimum hardware to high-end home setups, see `.env.local-llm-profiles.example`.
 
 For a complete real-runtime Docker walkthrough that creates a `singer_songwriter_acoustic` song with Ollama-served models, see [`docs/singer-songwriter-acoustic-e2e.md`](docs/singer-songwriter-acoustic-e2e.md).

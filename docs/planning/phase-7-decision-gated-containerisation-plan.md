@@ -314,7 +314,7 @@ Quality gate:
 - Docker build must pass.
 - Container CLI smoke test must list crews.
 - Container CLI smoke test must create per-track MIDI outputs under mounted `./outputs`.
-- Image context must exclude `.env`, `.git`, `.venv`, `.idea`, and generated outputs.
+- Image context must exclude `.env`, `.git`, `.venv`, `.idea`, `certs/`, and generated outputs.
 
 ### Phase 7.6: Compose App Profile
 

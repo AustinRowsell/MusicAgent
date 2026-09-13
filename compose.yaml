@@ -108,22 +108,6 @@ services:
     volumes:
       - ollama-models:/root/.ollama
 
-  ollama-pull:
-    image: ollama/ollama:latest
-    profiles:
-      - local-llm
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    volumes:
-      - ollama-models:/root/.ollama
-    depends_on:
-      - ollama
-    entrypoint:
-      - ollama
-      - pull
-    command:
-      - ${MUSICAGENT_MODEL:-llama3.1:8b}
-
   electronic-alt-pop-crew:
     <<: *musicagent-base
     profiles:

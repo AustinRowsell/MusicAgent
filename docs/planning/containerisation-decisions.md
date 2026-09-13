@@ -246,6 +246,8 @@ MUSICAGENT_LLM_PROVIDER=stub
 
 Non-stub providers require their documented environment variable names to be populated locally. Never put real credential values in Compose files, manifests, documentation, generated outputs, or commits.
 
+For Dockerised local-LLM workflows, local CA certificates are optional. If a workstation needs a corporate or custom CA for Ollama model pulls, place `.crt` or `.pem` files under `./certs`; helper scripts automatically enable `compose.local-certs.yaml` only when those files exist. Workstations that do not need local certificates use the base `compose.yaml` without a cert mount. The `certs/` directory is ignored by Git and excluded from Docker build contexts.
+
 ## Batch manifest example
 
 If a batch manifest workflow is used, keep input paths under the mounted `/app/inputs` tree and output roots under `/app/outputs`. Example command shape:

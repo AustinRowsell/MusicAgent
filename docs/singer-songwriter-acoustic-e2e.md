@@ -98,6 +98,13 @@ Pull the model into the `ollama-models` Docker volume:
 
 Why: the MusicAgent container calls Ollama at generation time, but Ollama must have the model weights available first. This command starts the Compose local-LLM profile if needed and runs `ollama pull llama3.2:3b` against the Dockerised Ollama service.
 
+There are two separate certificate paths in this Docker workflow:
+
+1. The MusicAgent image build downloads Python dependencies from PyPI with `uv`. If `./certs` contains `.crt` or `.pem` files, the Docker helper scripts concatenate them into the ignored local bundle `./certs/musicagent-local-ca-bundle.pem`, enable `compose.local-certs.yaml`, and pass that bundle into the build as a Docker BuildKit secret. The Dockerfile installs the secret into the container trust store before running `uv pip install --system --system-certs .`.
+2. The Ollama container downloads model weights from `registry.ollama.ai`. The same `compose.local-certs.yaml` override mounts `./certs` read-only into the Ollama container and extends `SSL_CERT_DIR` for that runtime model pull. If `./certs` is absent or contains no certificate files, the default Compose configuration is used with no certificate mount or build secret.
+
+Do not commit local certificate files. The `certs/` directory is intentionally ignored by Git and excluded from normal Docker build contexts. The generated `musicagent-local-ca-bundle.pem` is a local BuildKit secret input, not an application asset.
+
 This can take time on the first run because model weights are downloaded. Later runs reuse the persistent `ollama-models` volume.
 
 ## Step 4: Check runtime and model availability

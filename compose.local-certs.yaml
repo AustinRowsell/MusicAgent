@@ -1,0 +1,52 @@
+x-musicagent-local-ca-build: &musicagent-local-ca-build
+  context: .
+  secrets:
+    - source: musicagent_local_ca_bundle
+      target: musicagent_local_ca_bundle
+
+services:
+  musicagent-cli:
+    build: *musicagent-local-ca-build
+
+  musicagent-web:
+    build: *musicagent-local-ca-build
+
+  musicagent-local-llm-cli:
+    build: *musicagent-local-ca-build
+
+  musicagent-local-llm-web:
+    build: *musicagent-local-ca-build
+
+  electronic-alt-pop-crew:
+    build: *musicagent-local-ca-build
+
+  singer-songwriter-acoustic-crew:
+    build: *musicagent-local-ca-build
+
+  groove-architect-agent:
+    build: *musicagent-local-ca-build
+
+  sound-designer-agent:
+    build: *musicagent-local-ca-build
+
+  cyber-critic-agent:
+    build: *musicagent-local-ca-build
+
+  lyricist-poet-agent:
+    build: *musicagent-local-ca-build
+
+  topliner-agent:
+    build: *musicagent-local-ca-build
+
+  harmonic-accompanist-agent:
+    build: *musicagent-local-ca-build
+
+  ollama:
+    environment:
+      SSL_CERT_DIR: /etc/ssl/certs:/usr/local/share/ca-certificates/musicagent
+    volumes:
+      - ./certs:/usr/local/share/ca-certificates/musicagent:ro
+
+secrets:
+  musicagent_local_ca_bundle:
+    file: ./certs/musicagent-local-ca-bundle.pem

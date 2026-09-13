@@ -21,7 +21,11 @@ def test_dockerignore_excludes_secrets_and_generated_artifacts():
 def test_dockerfile_uses_supported_python_and_non_root_runtime():
     content = Path("Dockerfile").read_text()
 
+    assert "# syntax=docker/dockerfile:1.7" in content
     assert "python:3.14" in content
+    assert "--mount=type=secret,id=musicagent_local_ca_bundle" in content
+    assert "update-ca-certificates" in content
+    assert "uv pip install --system --system-certs ." in content
     assert "USER musicagent" in content
     assert "EXPOSE 8000" in content
     assert "CMD" in content

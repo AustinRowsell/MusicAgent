@@ -36,7 +36,12 @@ def test_phase_7_decisions_are_represented_in_config_and_container_files():
     assert "./outputs:/app/outputs" in docs
 
 
-def test_phase_7_final_smoke_keeps_cli_and_web_on_shared_generation_outputs(tmp_path):
+def test_phase_7_final_smoke_keeps_cli_and_web_on_shared_generation_outputs(tmp_path, monkeypatch):
+    monkeypatch.delenv("MUSICAGENT_LLM_PROVIDER", raising=False)
+    monkeypatch.delenv("MUSICAGENT_MODEL", raising=False)
+    monkeypatch.delenv("MUSICAGENT_OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
     result = runner.invoke(
         app,
         [

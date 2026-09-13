@@ -56,13 +56,14 @@ MUSICAGENT_AGENT_MODEL_REVIEWER=qwen2.5:14b
 `compose.yaml` now includes:
 
 - `ollama` service;
-- `ollama-pull` service;
 - `musicagent-local-llm-cli` service;
 - `musicagent-local-llm-web` service;
 - `ollama-models` persistent volume;
 - local endpoint wiring to `http://ollama:11434/v1`;
 - local placeholder API key wiring for Ollama's OpenAI-compatible API;
 - default/per-agent/low-resource model environment variables.
+
+`compose.local-certs.yaml` is an optional override for networks that intercept TLS or require a local certificate authority when Ollama pulls from `registry.ollama.ai`. Local-LLM helper scripts enable that override only when `./certs` contains `.crt` or `.pem` files; otherwise the base Compose stack has no certificate mount or `SSL_CERT_DIR` override. The `certs/` directory is ignored by Git and excluded from Docker build contexts.
 
 ### 2.5 Helper scripts and docs already exist
 
