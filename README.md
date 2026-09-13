@@ -180,6 +180,8 @@ Inspect non-secret local LLM configuration and runtime status:
 
 For ready-made workstation profiles from minimum hardware to high-end home setups, see `.env.local-llm-profiles.example`.
 
+For a complete real-runtime Docker walkthrough that creates a `singer_songwriter_acoustic` song with Ollama-served models, see [`docs/singer-songwriter-acoustic-e2e.md`](docs/singer-songwriter-acoustic-e2e.md).
+
 The local-LLM profile defaults to one Ollama container with multiple models available in the same `ollama-models` volume:
 
 ```text
