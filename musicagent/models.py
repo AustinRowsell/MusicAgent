@@ -49,6 +49,7 @@ class ProjectRequest(BaseModel):
     inputs: tuple[InputMaterial, ...] = ()
     overwrite: bool = False
     dry_run: bool = False
+    review_pass: bool = False
 
     @field_validator("output_root", mode="before")
     @classmethod

@@ -86,6 +86,21 @@ class CrewProjectGenerator:
             assets.append(GeneratedAsset(kind="json", path=data_path, description=task.title))
             executed_agents.append(task.agent_id)
 
+        if canonical_request.review_pass:
+            review_response = self._agent_runner.run("reviewer", canonical_request.prompt)
+            review_markdown = chr(10).join(
+                ["# Review", "", "Agent: reviewer", "", review_response, ""]
+            )
+            review_path = self._output_store.write_text(project, "review.md", review_markdown)
+            review_data_path = self._output_store.write_json(
+                project,
+                "data/review.json",
+                {"agent_id": "reviewer", "summary": review_response},
+            )
+            assets.append(GeneratedAsset(kind="markdown", path=review_path, description="Review"))
+            assets.append(GeneratedAsset(kind="json", path=review_data_path, description="Review"))
+            executed_agents.append("reviewer")
+
         for track_name, midi_path in self._midi_writer.write_tracks(
             tracks_for_crew(crew.id), project.midi_dir, canonical_request.tempo_bpm
         ).items():

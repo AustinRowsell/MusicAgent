@@ -5,14 +5,17 @@ description = "Multi-agent music creation tooling for structured song and MIDI g
 requires-python = ">=3.12,<3.14"
 dependencies = [
     "crewai",
+    "fastapi",
     "langchain-openai",
     "mido",
     "music21",
     "pretty_midi",
     "pydantic",
     "python-dotenv",
+    "python-multipart",
     "rich",
     "typer",
+    "uvicorn",
 ]
 
 [project.scripts]
