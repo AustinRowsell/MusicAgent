@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "musicagent"
 version = "0.1.0"
 description = "Multi-agent music creation tooling for structured song and MIDI generation."
-requires-python = ">=3.12,<3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "crewai",
     "fastapi",
@@ -43,7 +43,7 @@ line-length = 100
 src = ["musicagent", "tests"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 strict = true
 packages = ["musicagent"]
 mypy_path = "typings"

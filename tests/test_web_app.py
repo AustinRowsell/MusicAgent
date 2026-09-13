@@ -24,6 +24,24 @@ def test_web_api_lists_crews():
     assert "singer_songwriter_acoustic" in crew_ids
 
 
+def test_web_api_config_returns_non_secret_diagnostics(monkeypatch):
+    monkeypatch.setenv("MUSICAGENT_LLM_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("MUSICAGENT_MODEL", "llama3.1:8b")
+    monkeypatch.setenv("MUSICAGENT_OPENAI_BASE_URL", "http://user:password@ollama:11434/v1")
+    monkeypatch.setenv("OPENAI_API_KEY", "super-secret-token")
+    client = TestClient(create_app())
+
+    response = client.get("/api/config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["provider"] == "openai-compatible"
+    assert payload["base_url_host"] == "ollama:11434"
+    assert payload["has_openai_api_key"] is True
+    assert "super-secret-token" not in response.text
+    assert "password" not in response.text
+
+
 def test_web_api_creates_project_and_lists_assets(tmp_path: Path):
     client = TestClient(create_app())
 

@@ -1,10 +1,12 @@
 import pytest
 from musicagent.config import MusicAgentSettings
 from musicagent.orchestration.llm import (
+    AgentModelRouter,
     AzureOpenAILLMClient,
     LangChainOpenAICompatibleLLMClient,
     ProviderConfigurationError,
     StubLLMClient,
+    create_agent_model_router,
     create_llm_client,
 )
 
@@ -72,3 +74,52 @@ def test_azure_provider_can_be_constructed_without_network_call():
     assert isinstance(client, AzureOpenAILLMClient)
     assert client.endpoint == "https://azure.example.test"
     assert client.deployment == "music-agent"
+
+
+def test_openai_compatible_provider_prefers_settings_model_and_base_url():
+    settings = MusicAgentSettings(
+        llm_provider="openai-compatible",
+        llm_model="llama3.1:8b",
+        llm_base_url="http://ollama:11434/v1",
+    )
+
+    client = create_llm_client(settings, environ={"OPENAI_API_KEY": "placeholder"})
+
+    assert isinstance(client, LangChainOpenAICompatibleLLMClient)
+    assert client.model == "llama3.1:8b"
+    assert client.base_url == "http://ollama:11434/v1"
+
+
+def test_agent_model_router_uses_agent_override_before_default():
+    router = AgentModelRouter(
+        default_model="llama3.1:8b",
+        agent_model_overrides={"lyricist_poet": "mistral-nemo:12b"},
+    )
+
+    assert router.model_for("lyricist_poet") == "mistral-nemo:12b"
+    assert router.model_for("groove_architect") == "llama3.1:8b"
+
+
+def test_agent_model_router_low_resource_model_overrides_agent_models():
+    router = AgentModelRouter(
+        default_model="llama3.1:8b",
+        low_resource_model="llama3.2:3b",
+        use_low_resource_model=True,
+        agent_model_overrides={"lyricist_poet": "mistral-nemo:12b"},
+    )
+
+    assert router.model_for("lyricist_poet") == "llama3.2:3b"
+    assert router.model_for("groove_architect") == "llama3.2:3b"
+
+
+def test_agent_model_router_is_created_from_settings():
+    settings = MusicAgentSettings(
+        llm_model="llama3.1:8b",
+        low_resource_model="llama3.2:3b",
+        agent_model_overrides={"topliner": "mistral-nemo:12b"},
+    )
+
+    router = create_agent_model_router(settings)
+
+    assert router.model_for("topliner") == "mistral-nemo:12b"
+    assert router.model_for("sound_designer") == "llama3.1:8b"

@@ -140,7 +140,7 @@ scripts/docker-run-web.sh
 
 The Dockerfile should:
 
-- Use a Python version compatible with the dependency set, currently Python 3.13 or 3.12.
+- Use Python 3.14, matching the local toolchain and project metadata.
 - Install dependencies with `uv` or standard `pip` based on the selected team preference.
 - Avoid copying `.env`, `.git`, `.venv`, outputs, and IDE files into the image.
 - Run as a non-root user if practical.
@@ -303,7 +303,7 @@ Deliverables:
   - Python caches
   - test caches
   - local editor/system files.
-- Add `Dockerfile` using Python 3.13 or 3.12, consistent with `requires-python = ">=3.12,<3.14"`.
+- Add `Dockerfile` using Python 3.14, consistent with `requires-python = ">=3.14,<3.15"`.
 - Install dependencies from the project lock/config.
 - Support both CLI and web commands from the same image.
 - Avoid copying generated outputs or local secrets into the image.

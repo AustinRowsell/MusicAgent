@@ -1,0 +1,40 @@
+{
+  "mcpServers": {
+    "ao-context": {
+      "args": [
+        "context-mcp",
+        "--protocol",
+        "mcp",
+        "--workspace",
+        "/Users/uk80131003/PyCharmProjects/MusicAgent"
+      ],
+      "command": "/Users/uk80131003/PyCharmProjects/MusicAgent/.venv/bin/agent-orchestrator",
+      "description": "Workspace-scoped AO context and tool-substitution server",
+      "includeTools": [
+        "ao_find_files",
+        "ao_read_file",
+        "ao_git_status",
+        "ao_git_diff",
+        "ao_run_tests",
+        "ao_replace",
+        "ao_latest_run",
+        "ao_open_artifact",
+        "ao_health",
+        "ao_index_status",
+        "ao_reindex",
+        "ao_context_search",
+        "ao_search_code",
+        "ao_open_chunk",
+        "ao_expand_lines",
+        "ao_expand_ranges",
+        "ao_write_file",
+        "ao_run_local_command",
+        "ao_expand_chunk",
+        "ao_related_context",
+        "ao_context_pack",
+        "ao_recall_session"
+      ],
+      "trust": true
+    }
+  }
+}

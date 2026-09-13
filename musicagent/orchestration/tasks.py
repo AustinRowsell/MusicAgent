@@ -1,4 +1,4 @@
-"""Task definitions and deterministic outputs for built-in crews."""
+"""Task definitions and structured outputs for built-in crews."""
 
 from __future__ import annotations
 
@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from musicagent.midi.events import MidiNote, MidiTrack
 from musicagent.models import ProjectRequest
+from musicagent.orchestration.structured import ParsedAgentOutput, structured_output_to_markdown
 
 
 @dataclass(frozen=True)
@@ -103,9 +104,11 @@ def tracks_for_crew(crew_id: str) -> list[MidiTrack]:
     ]
 
 
-def build_stub_task_result(
-    task: AgentTask, request: ProjectRequest, llm_response: str
+def build_task_result(
+    task: AgentTask, request: ProjectRequest, agent_output: ParsedAgentOutput
 ) -> AgentTaskResult:
+    """Build markdown and machine JSON data from validated structured agent output."""
+
     markdown = chr(10).join(
         [
             f"# {task.title}",
@@ -114,7 +117,7 @@ def build_stub_task_result(
             f"Crew: {request.crew}",
             f"Prompt: {request.prompt}",
             "",
-            llm_response,
+            structured_output_to_markdown(agent_output),
             "",
         ]
     )
@@ -122,7 +125,12 @@ def build_stub_task_result(
         "agent_id": task.agent_id,
         "crew": request.crew,
         "prompt": request.prompt,
-        "summary": llm_response,
+        "summary": agent_output.output.summary,
+        "sections": list(agent_output.output.sections),
+        "actions": list(agent_output.output.actions),
+        "confidence": agent_output.output.confidence,
+        "structured_output_valid": agent_output.valid,
+        "structured_output_error": agent_output.error,
     }
     return AgentTaskResult(
         agent_id=task.agent_id,
@@ -130,4 +138,28 @@ def build_stub_task_result(
         data_path=task.data_path,
         markdown=markdown,
         data=data,
+    )
+
+
+def build_stub_task_result(
+    task: AgentTask, request: ProjectRequest, llm_response: str
+) -> AgentTaskResult:
+    """Backward-compatible helper for existing tests and deterministic flows."""
+
+    return build_task_result(
+        task,
+        request,
+        ParsedAgentOutput.model_validate(
+            {
+                "valid": True,
+                "output": {
+                    "agent_id": task.agent_id,
+                    "summary": llm_response,
+                    "sections": (),
+                    "actions": (),
+                    "confidence": None,
+                },
+                "raw_response": llm_response,
+            }
+        ),
     )

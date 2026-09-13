@@ -8,11 +8,41 @@ x-musicagent-base: &musicagent-base
   environment: &musicagent-environment
     MUSICAGENT_OUTPUT_ROOT: /app/outputs
     MUSICAGENT_LLM_PROVIDER: ${MUSICAGENT_LLM_PROVIDER:-stub}
+    MUSICAGENT_MODEL: ${MUSICAGENT_MODEL:-}
+    MUSICAGENT_OPENAI_BASE_URL: ${MUSICAGENT_OPENAI_BASE_URL:-}
+    MUSICAGENT_LOW_RESOURCE_MODEL: ${MUSICAGENT_LOW_RESOURCE_MODEL:-}
+    MUSICAGENT_USE_LOW_RESOURCE_MODEL: ${MUSICAGENT_USE_LOW_RESOURCE_MODEL:-false}
+    MUSICAGENT_AGENT_MODEL_LYRICIST_POET: ${MUSICAGENT_AGENT_MODEL_LYRICIST_POET:-}
+    MUSICAGENT_AGENT_MODEL_TOPLINER: ${MUSICAGENT_AGENT_MODEL_TOPLINER:-}
+    MUSICAGENT_AGENT_MODEL_GROOVE_ARCHITECT: ${MUSICAGENT_AGENT_MODEL_GROOVE_ARCHITECT:-}
+    MUSICAGENT_AGENT_MODEL_SOUND_DESIGNER: ${MUSICAGENT_AGENT_MODEL_SOUND_DESIGNER:-}
+    MUSICAGENT_AGENT_MODEL_HARMONIC_ACCOMPANIST: ${MUSICAGENT_AGENT_MODEL_HARMONIC_ACCOMPANIST:-}
+    MUSICAGENT_AGENT_MODEL_CYBER_CRITIC: ${MUSICAGENT_AGENT_MODEL_CYBER_CRITIC:-}
+    MUSICAGENT_AGENT_MODEL_REVIEWER: ${MUSICAGENT_AGENT_MODEL_REVIEWER:-}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     MUSICAGENT_INPUT_MODE: ${MUSICAGENT_INPUT_MODE:-copy}
     MUSICAGENT_DEPLOYMENT_PROFILE: ${MUSICAGENT_DEPLOYMENT_PROFILE:-app}
   volumes:
     - ./outputs:/app/outputs
     - ./inputs:/app/inputs:ro
+
+x-musicagent-local-llm-environment: &musicagent-local-llm-environment
+  MUSICAGENT_OUTPUT_ROOT: /app/outputs
+  MUSICAGENT_LLM_PROVIDER: openai-compatible
+  MUSICAGENT_MODEL: ${MUSICAGENT_MODEL:-llama3.1:8b}
+  MUSICAGENT_OPENAI_BASE_URL: http://ollama:11434/v1
+  MUSICAGENT_LOW_RESOURCE_MODEL: ${MUSICAGENT_LOW_RESOURCE_MODEL:-llama3.2:3b}
+  MUSICAGENT_USE_LOW_RESOURCE_MODEL: ${MUSICAGENT_USE_LOW_RESOURCE_MODEL:-false}
+  MUSICAGENT_AGENT_MODEL_LYRICIST_POET: ${MUSICAGENT_AGENT_MODEL_LYRICIST_POET:-mistral-nemo:12b}
+  MUSICAGENT_AGENT_MODEL_TOPLINER: ${MUSICAGENT_AGENT_MODEL_TOPLINER:-mistral-nemo:12b}
+  MUSICAGENT_AGENT_MODEL_GROOVE_ARCHITECT: ${MUSICAGENT_AGENT_MODEL_GROOVE_ARCHITECT:-llama3.1:8b}
+  MUSICAGENT_AGENT_MODEL_SOUND_DESIGNER: ${MUSICAGENT_AGENT_MODEL_SOUND_DESIGNER:-llama3.1:8b}
+  MUSICAGENT_AGENT_MODEL_HARMONIC_ACCOMPANIST: ${MUSICAGENT_AGENT_MODEL_HARMONIC_ACCOMPANIST:-llama3.1:8b}
+  MUSICAGENT_AGENT_MODEL_CYBER_CRITIC: ${MUSICAGENT_AGENT_MODEL_CYBER_CRITIC:-qwen2.5:14b}
+  MUSICAGENT_AGENT_MODEL_REVIEWER: ${MUSICAGENT_AGENT_MODEL_REVIEWER:-qwen2.5:14b}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-ollama-local-placeholder}
+  MUSICAGENT_INPUT_MODE: ${MUSICAGENT_INPUT_MODE:-copy}
+  MUSICAGENT_DEPLOYMENT_PROFILE: ${MUSICAGENT_DEPLOYMENT_PROFILE:-app}
 
 services:
   musicagent-cli:
@@ -38,6 +68,61 @@ services:
       - 0.0.0.0
       - --port
       - "8000"
+
+  musicagent-local-llm-cli:
+    <<: *musicagent-base
+    profiles:
+      - local-llm
+    environment:
+      <<: *musicagent-local-llm-environment
+    depends_on:
+      - ollama
+    command:
+      - musicagent
+      - crews
+
+  musicagent-local-llm-web:
+    <<: *musicagent-base
+    profiles:
+      - local-llm
+    environment:
+      <<: *musicagent-local-llm-environment
+    depends_on:
+      - ollama
+    ports:
+      - "8000:8000"
+    command:
+      - uvicorn
+      - musicagent.web.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles:
+      - local-llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+  ollama-pull:
+    image: ollama/ollama:latest
+    profiles:
+      - local-llm
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ollama-models:/root/.ollama
+    depends_on:
+      - ollama
+    entrypoint:
+      - ollama
+      - pull
+    command:
+      - ${MUSICAGENT_MODEL:-llama3.1:8b}
 
   electronic-alt-pop-crew:
     <<: *musicagent-base
@@ -150,3 +235,6 @@ services:
       - agent-worker
       - --agent-id
       - harmonic_accompanist
+
+volumes:
+  ollama-models:

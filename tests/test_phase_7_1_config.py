@@ -33,3 +33,25 @@ def test_settings_public_snapshot_redacts_secret_values(monkeypatch):
 
     assert "super-secret-token" not in str(snapshot)
     assert snapshot["has_openai_api_key"] is True
+
+
+def test_settings_load_model_routing_from_environment(monkeypatch):
+    monkeypatch.setenv("MUSICAGENT_LLM_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("MUSICAGENT_MODEL", "llama3.1:8b")
+    monkeypatch.setenv("MUSICAGENT_OPENAI_BASE_URL", "http://ollama:11434/v1")
+    monkeypatch.setenv("MUSICAGENT_LOW_RESOURCE_MODEL", "llama3.2:3b")
+    monkeypatch.setenv("MUSICAGENT_USE_LOW_RESOURCE_MODEL", "true")
+    monkeypatch.setenv("MUSICAGENT_AGENT_MODEL_LYRICIST_POET", "mistral-nemo:12b")
+    monkeypatch.setenv("MUSICAGENT_AGENT_MODEL_TOPLINER", "mistral-nemo:12b")
+
+    settings = load_settings()
+
+    assert settings.llm_provider == "openai-compatible"
+    assert settings.llm_model == "llama3.1:8b"
+    assert settings.llm_base_url == "http://ollama:11434/v1"
+    assert settings.low_resource_model == "llama3.2:3b"
+    assert settings.use_low_resource_model is True
+    assert settings.agent_model_overrides == {
+        "lyricist_poet": "mistral-nemo:12b",
+        "topliner": "mistral-nemo:12b",
+    }

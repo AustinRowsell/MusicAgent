@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
+from musicagent.config import load_settings
 from musicagent.io.inputs import InputMaterialReader
 from musicagent.io.outputs import LocalOutputStore
 from musicagent.midi.writer import MidoMidiWriter
@@ -17,16 +19,44 @@ from musicagent.models import (
     ProjectPaths,
     ProjectRequest,
 )
-from musicagent.orchestration.llm import StubLLMClient
-from musicagent.orchestration.tasks import build_stub_task_result, tasks_for_crew, tracks_for_crew
+from musicagent.orchestration.llm import (
+    AgentModelRouter,
+    LLMClient,
+    StubLLMClient,
+    create_agent_model_router,
+    create_llm_client,
+)
+from musicagent.orchestration.structured import (
+    AgentStructuredOutput,
+    ParsedAgentOutput,
+    StructuredAgentResponder,
+)
+from musicagent.orchestration.tasks import build_task_result, tasks_for_crew, tracks_for_crew
 from musicagent.registries.crews import BuiltInCrewRegistry
 
 
 class AgentRunner(Protocol):
     """Small interface for executing an agent task."""
 
-    def run(self, agent_id: str, prompt: str) -> str:
-        """Return an agent response for a task prompt."""
+    def run(self, agent_id: str, prompt: str) -> ParsedAgentOutput:
+        """Return a structured agent response for a task prompt."""
+
+
+@dataclass(frozen=True)
+class LLMAgentRunner:
+    """Agent runner that delegates requests to an LLM client with per-agent model routing."""
+
+    llm_client: LLMClient
+    model_router: AgentModelRouter = field(default_factory=AgentModelRouter)
+    structured_responder: StructuredAgentResponder = field(default_factory=StructuredAgentResponder)
+
+    def run(self, agent_id: str, prompt: str) -> ParsedAgentOutput:
+        return self.structured_responder.generate(
+            agent_id,
+            prompt,
+            self.llm_client.complete,
+            model=self.model_router.model_for(agent_id),
+        )
 
 
 @dataclass(frozen=True)
@@ -35,8 +65,13 @@ class StubAgentRunner:
 
     llm_client: StubLLMClient = field(default_factory=StubLLMClient)
 
-    def run(self, agent_id: str, prompt: str) -> str:
-        return self.llm_client.complete(agent_id, prompt)
+    def run(self, agent_id: str, prompt: str) -> ParsedAgentOutput:
+        response = self.llm_client.complete(agent_id, prompt)
+        return ParsedAgentOutput(
+            valid=True,
+            output=AgentStructuredOutput(agent_id=agent_id, summary=response),
+            raw_response=response,
+        )
 
 
 @dataclass(frozen=True)
@@ -60,7 +95,7 @@ class CrewProjectGenerator:
         midi_writer: MidoMidiWriter | None = None,
         input_reader: InputMaterialReader | None = None,
     ) -> None:
-        self._agent_runner = agent_runner or StubAgentRunner()
+        self._agent_runner = agent_runner or create_configured_agent_runner()
         self._crew_registry = crew_registry or BuiltInCrewRegistry.default()
         self._output_store = output_store or LocalOutputStore()
         self._midi_writer = midi_writer or MidoMidiWriter()
@@ -78,8 +113,8 @@ class CrewProjectGenerator:
 
         executed_agents: list[str] = []
         for task in tasks_for_crew(crew.id):
-            response = self._agent_runner.run(task.agent_id, canonical_request.prompt)
-            task_result = build_stub_task_result(task, canonical_request, response)
+            agent_output = self._agent_runner.run(task.agent_id, canonical_request.prompt)
+            task_result = build_task_result(task, canonical_request, agent_output)
             markdown_path = self._output_store.write_text(
                 project, task_result.markdown_path, task_result.markdown
             )
@@ -93,15 +128,30 @@ class CrewProjectGenerator:
             executed_agents.append(task.agent_id)
 
         if canonical_request.review_pass:
-            review_response = self._agent_runner.run("reviewer", canonical_request.prompt)
+            review_output = self._agent_runner.run("reviewer", canonical_request.prompt)
             review_markdown = chr(10).join(
-                ["# Review", "", "Agent: reviewer", "", review_response, ""]
+                [
+                    "# Review",
+                    "",
+                    "Agent: reviewer",
+                    "",
+                    review_output.output.summary,
+                    "",
+                ]
             )
             review_path = self._output_store.write_text(project, "review.md", review_markdown)
             review_data_path = self._output_store.write_json(
                 project,
                 "data/review.json",
-                {"agent_id": "reviewer", "summary": review_response},
+                {
+                    "agent_id": "reviewer",
+                    "summary": review_output.output.summary,
+                    "sections": list(review_output.output.sections),
+                    "actions": list(review_output.output.actions),
+                    "confidence": review_output.output.confidence,
+                    "structured_output_valid": review_output.valid,
+                    "structured_output_error": review_output.error,
+                },
             )
             assets.append(GeneratedAsset(kind="markdown", path=review_path, description="Review"))
             assets.append(GeneratedAsset(kind="json", path=review_data_path, description="Review"))
@@ -157,3 +207,13 @@ class CrewProjectGenerator:
             ]
         )
         return self._output_store.write_text(project, "brief.md", content)
+
+
+def create_configured_agent_runner() -> AgentRunner:
+    """Create the default runtime agent runner from environment-backed settings."""
+
+    settings = load_settings()
+    if settings.llm_provider == "stub":
+        return StubAgentRunner()
+    llm_client = create_llm_client(settings, os.environ)
+    return LLMAgentRunner(llm_client=llm_client, model_router=create_agent_model_router(settings))

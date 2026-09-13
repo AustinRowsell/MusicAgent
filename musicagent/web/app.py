@@ -8,9 +8,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel, ConfigDict
 
+from musicagent.config import load_settings
 from musicagent.io.outputs import slugify
 from musicagent.models import ProjectRequest
 from musicagent.orchestration.crew import CrewProjectGenerator
+from musicagent.orchestration.diagnostics import build_config_diagnostic
 from musicagent.registries.crews import BuiltInCrewRegistry
 
 
@@ -64,6 +66,10 @@ def create_app() -> FastAPI:
                 for crew in registry.list()
             ]
         }
+
+    @app.get("/api/config")
+    def config() -> dict[str, object]:
+        return build_config_diagnostic(load_settings()).model_dump(mode="json")
 
     @app.post("/api/projects")
     def create_project(request: WebProjectRequest) -> dict[str, object]:

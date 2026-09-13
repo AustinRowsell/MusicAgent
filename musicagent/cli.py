@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Annotated
 
 import typer
 from rich.console import Console
 
+from musicagent.config import load_settings
 from musicagent.io.inputs import InputMaterialReader
 from musicagent.models import InputHandlingMode, ProjectRequest
 from musicagent.orchestration.crew import CrewProjectGenerator
+from musicagent.orchestration.diagnostics import (
+    LLMDiagnosticReport,
+    build_config_diagnostic,
+    check_llm_reachability,
+    check_model_availability,
+    runtime_alternatives,
+)
 from musicagent.registries.agents import built_in_agents
 from musicagent.registries.crews import BuiltInCrewRegistry
 
@@ -44,6 +53,47 @@ def agent_worker(agent_id: Annotated[str, typer.Option("--agent-id")]) -> None:
     if agent_id not in agent_ids:
         raise typer.BadParameter(f"Unknown agent: {agent_id}")
     console.print(f"agent worker ready: {agent_id}")
+
+
+@app.command("config")
+def config() -> None:
+    """Print non-secret LLM configuration diagnostics."""
+
+    settings = load_settings()
+    diagnostic = build_config_diagnostic(settings)
+    console.print_json(data=diagnostic.model_dump(mode="json"))
+
+
+@app.command("llm-check")
+def llm_check(
+    check_reachability: Annotated[
+        bool,
+        typer.Option("--reachability/--no-reachability"),
+    ] = True,
+    check_models: Annotated[bool, typer.Option("--models/--no-models")] = True,
+) -> None:
+    """Check configured LLM reachability and model availability without printing secrets."""
+
+    settings = load_settings()
+    report = LLMDiagnosticReport(
+        config=build_config_diagnostic(settings),
+        reachability=check_llm_reachability(settings, os.environ) if check_reachability else None,
+        model_availability=check_model_availability(settings, os.environ) if check_models else None,
+    )
+    console.print_json(data=report.model_dump(mode="json"))
+    if (report.reachability and not report.reachability.ok) or (
+        report.model_availability and not report.model_availability.ok
+    ):
+        raise typer.Exit(code=1)
+
+
+@app.command("llm-runtimes")
+def llm_runtimes() -> None:
+    """Print the planned local LLM runtime evaluation order."""
+
+    console.print_json(
+        data=[alternative.model_dump(mode="json") for alternative in runtime_alternatives()]
+    )
 
 
 @app.command("create")
